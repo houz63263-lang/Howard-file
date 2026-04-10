@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Robotics Components Funding Landscape</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; background-color: #f8fafc; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        #container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+        .axis-label { font-size: 13px; fill: #64748b; font-weight: 600; }
+        .grid line { stroke: #f1f5f9; stroke-width: 1px; }
+        .grid path { stroke-width: 0; }
+        .bubble { stroke: #fff; stroke-width: 2px; opacity: 0.8; transition: all 0.2s ease; cursor: pointer; }
+        .bubble:hover { opacity: 1; stroke: #334155; }
+        .label { font-size: 11px; fill: #334155; pointer-events: none; font-weight: 500; }
+        .unicorn-line { stroke: #f59e0b; stroke-width: 2px; stroke-dasharray: 8,4; opacity: 0.6; }
+        .unicorn-text { fill: #d97706; font-size: 12px; font-weight: bold; }
+        .tooltip {
+            position: absolute; padding: 12px; background: rgba(255, 255, 255, 0.98);
+            border: 1px solid #e2e8f0; border-radius: 8px; pointer-events: none;
+            font-size: 13px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); line-height: 1.6; color: #1e293b;
+        }
+    </style>
+</head>
+<body>
+
+<div id="container">
+    <h2 style="text-align: center; color: #0f172a; margin-bottom: 20px;">机器人核心零部件企业分布气泡图</h2>
+    <div id="chart"></div>
+</div>
+
+<script>
+    const data = [
+        { name: "灵心巧手", stage: "B轮", val: 105, amt: 15, city: "深圳", sector: "灵巧手" },
+        { name: "帕西尼感知", stage: "B轮", val: 65, amt: 10, city: "深圳", sector: "触觉感知" },
+        { name: "因时机器人", stage: "B+轮", val: 15, amt: 2, city: "北京", sector: "微型伺服" },
+        { name: "傲意科技", stage: "A轮", val: 8, amt: 1.5, city: "上海", sector: "仿生手" },
+        { name: "钧舵机器人", stage: "A轮", val: 6, amt: 1, city: "苏州", sector: "电动夹爪" },
+        { name: "强脑科技", stage: "天使轮", val: 25, amt: 0.5, city: "深圳", sector: "脑机接口" },
+        { name: "蓝胖子机器", stage: "C轮", val: 35, amt: 5, city: "深圳", sector: "智能抓取" },
+        { name: "大寰机器人", stage: "B+轮", val: 12, amt: 2, city: "苏州", sector: "电动夹爪" },
+        { name: "SRT软体机器人", stage: "B轮", val: 20, amt: 3, city: "北京", sector: "软体夹爪" },
+        { name: "知行机器人", stage: "A轮", val: 5, amt: 1, city: "苏州", sector: "自适应手" },
+        { name: "库柏特", stage: "B+轮", val: 25, amt: 4, city: "武汉", sector: "智能抓取" },
+        { name: "伟景机器人", stage: "天使轮", val: 3, amt: 0.8, city: "深圳", sector: "立体视觉" },
+        { name: "若贝特机器", stage: "A轮", val: 6, amt: 1.5, city: "深圳", sector: "并联机器人" },
+        { name: "戴盟机器人", stage: "A轮", val: 10, amt: 1, city: "深圳", sector: "灵巧手" },
+        { name: "海每智能", stage: "天使轮", val: 2, amt: 0.3, city: "深圳", sector: "医疗假肢" }
+    ];
+
+    const stages = ["天使轮", "Pre-A轮", "A轮", "B轮", "B+轮", "C轮"];
+    const margin = {top: 40, right: 120, bottom: 60, left: 80};
+    const width = 1000 - margin.left - margin.right;
+    const height = 600 - margin.top - margin.bottom;
+
+    const svg = d3.select("#chart").append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+    const tooltip = d3.select("body").append("div").attr("class", "tooltip").style("opacity", 0);
+
+    // Scales
+    const x = d3.scalePoint().domain(stages).range([60, width - 60]);
+    const y = d3.scaleLinear().domain([0, 120]).range([height, 0]);
+    const r = d3.scaleSqrt().domain([0, 20]).range([6, 30]);
+    
+    const color = d3.scaleOrdinal()
+        .domain(["深圳", "北京", "上海", "苏州", "武汉"])
+        .range(["#f472b6", "#818cf8", "#60a5fa", "#2dd4bf", "#fbbf24"]);
+
+    // Grid & Axes
+    svg.append("g").attr("class", "grid").call(d3.axisLeft(y).tickSize(-width).tickFormat(""));
+    svg.append("g").attr("transform", `translate(0,${height})`).call(d3.axisBottom(x).tickPadding(10));
+    svg.append("g").call(d3.axisLeft(y).tickPadding(10));
+
+    // Unicorn Line (at 5)
+    svg.append("line").attr("class", "unicorn-line").attr("x1", 0).attr("x2", width).attr("y1", y(50)).attr("y2", y(50));
+    svg.append("text").attr("class", "unicorn-text").attr("x", width - 100).attr("y", y(50) - 10).text("独角兽门槛 50亿");
+
+    // Physics for overlap prevention
+    const nodes = data.map(d => ({...d, x: x(d.stage), y: y(d.val)}));
+    const simulation = d3.forceSimulation(nodes)
+        .force("x", d3.forceX(d => x(d.stage)).strength(1))
+        .force("y", d3.forceY(d => y(d.val)).strength(1))
+        .force("collide", d3.forceCollide().radius(d => r(d.amt) + 20))
+        .stop();
+
+    for (let i = 0; i < 200; ++i) simulation.tick();
+
+    // Draw
+    const bubbles = svg.selectAll(".bubble-group").data(nodes).enter().append("g");
+
+    bubbles.append("circle")
+        .attr("class", "bubble")
+        .attr("cx", d => d.x).attr("cy", d => d.y).attr("r", d => r(d.amt))
+        .style("fill", d => color(d.city))
+        .on("mouseover", (event, d) => {
+            tooltip.transition().duration(100).style("opacity", 1);
+            tooltip.html(`
+                <strong>${d.name}</strong><br/>
+                技术领域: ${d.sector}<br/>
+                总部城市: ${d.city}<br/>
+                最新估值: ${d.val}亿 RMB<br/>
+                融资金额: ${d.amt}亿 RMB
+            `)
+            .style("left", (event.pageX + 15) + "px")
+            .style("top", (event.pageY - 28) + "px");
+        })
+        .on("mousemove", (event) => {
+            tooltip.style("left", (event.pageX + 15) + "px").style("top", (event.pageY - 28) + "px");
+        })
+        .on("mouseout", () => {
+            tooltip.transition().duration(300).style("opacity", 0);
+        });
+
+    bubbles.append("text")
+        .attr("class", "label")
+        .attr("x", d => d.x).attr("y", d => d.y - r(d.amt) - 8)
+        .attr("text-anchor", "middle")
+        .text(d => d.name);
+
+    // Axis Titles
+    svg.append("text").attr("x", width / 2).attr("y", height + 50).attr("class", "axis-label").style("text-anchor", "middle").text("融资轮次 Funding Round");
+    svg.append("text").attr("transform", "rotate(-90)").attr("y", -55).attr("x", -height/2).attr("class", "axis-label").style("text-anchor", "middle").text("估值 Post-money Valuation (100M RMB)");
+
+</script>
+</body>
+</html>

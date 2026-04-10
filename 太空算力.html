@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>2026 Space Computing Funding Landscape</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body { font-family: "Helvetica Neue", Arial, "PingFang SC", sans-serif; background-color: #0f172a; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; color: #f8fafc; }
+        #container { background: #1e293b; padding: 30px; border-radius: 20px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); border: 1px solid #334155; }
+        .axis-label { font-size: 13px; fill: #94a3b8; font-weight: 600; }
+        .grid line { stroke: #334155; stroke-width: 1px; stroke-dasharray: 4,4; }
+        .grid path { stroke-width: 0; }
+        .bubble { stroke: #fff; stroke-width: 1.5px; opacity: 0.8; transition: all 0.3s ease; cursor: pointer; }
+        .bubble:hover { opacity: 1; stroke-width: 3px; filter: drop-shadow(0 0 8px rgba(255,255,255,0.5)); }
+        .label { font-size: 11px; fill: #e2e8f0; pointer-events: none; font-weight: 500; text-shadow: 1px 1px 2px #000; }
+        .unicorn-line { stroke: #fbbf24; stroke-width: 2px; stroke-dasharray: 10,5; }
+        .unicorn-text { fill: #fbbf24; font-size: 12px; font-weight: bold; }
+        .tooltip {
+            position: absolute; padding: 15px; background: #ffffff; border-radius: 12px; 
+            pointer-events: none; font-size: 13px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); 
+            line-height: 1.7; color: #1e293b; z-index: 100; border: 1px solid #e2e8f0;
+        }
+    </style>
+</head>
+<body>
+
+<div id="container">
+    <h2 style="text-align: center; margin-bottom: 10px; font-weight: 300;">2026年 太空算力与商业航天投融资概览</h2>
+    <div id="chart"></div>
+</div>
+
+<script>
+    // Data reflecting the 2026 Space Computing boom
+    const data = [
+        { name: "银河航天", stage: "战略融资", val: 150, amt: 20, city: "北京", sector: "星载计算" },
+        { name: "地卫二", stage: "C轮", val: 85, amt: 12, city: "杭州", sector: "AI星座" },
+        { name: "星测未来", stage: "B轮", val: 45, amt: 6, city: "北京", sector: "星上算力" },
+        { name: "氪星光联", stage: "B+轮", val: 30, amt: 4, city: "上海", sector: "激光通信" },
+        { name: "中科天算", stage: "A轮", val: 12, amt: 2, city: "北京", sector: "太空边缘计算" },
+        { name: "微纳星空", stage: "D轮", val: 110, amt: 15, city: "北京", sector: "卫星平台" },
+        { name: "国星宇航", stage: "C+轮", val: 75, amt: 10, city: "成都", sector: "卫星AI芯片" },
+        { name: "蓝箭航天", stage: "IPO阶段", val: 350, amt: 80, city: "北京", sector: "可复用火箭" },
+        { name: "星河动力", stage: "D轮", val: 160, amt: 25, city: "北京", sector: "火箭制造" },
+        { name: "航天驭星", stage: "C轮", val: 40, amt: 5, city: "北京", sector: "地面测控网" },
+        { name: "时空道宇", stage: "C轮", val: 95, amt: 12, city: "上海", sector: "算力路由" },
+        { name: "中科天塔", stage: "B轮", val: 20, amt: 3, city: "西安", sector: "云端测控" },
+        { name: "天仪研究院", stage: "C轮", val: 35, amt: 6, city: "长沙", sector: "雷达卫星" },
+        { name: "零重力实验室", stage: "A+轮", val: 15, amt: 2.5, city: "北京", sector: "太空制药算力" },
+        { name: "星邑空间", stage: "B轮", val: 25, amt: 4, city: "西安", sector: "数据接收" }
+    ];
+
+    const stages = ["A轮", "A+轮", "B轮", "B+轮", "C轮", "C+轮", "D轮", "战略融资", "IPO阶段"];
+    const margin = {top: 50, right: 120, bottom: 80, left: 100};
+    const width = 1100 - margin.left - margin.right;
+    const height = 650 - margin.top - margin.bottom;
+
+    const svg = d3.select("#chart").append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+    const tooltip = d3.select("body").append("div").attr("class", "tooltip").style("opacity", 0);
+
+    // Scales
+    const x = d3.scalePoint().domain(stages).range([80, width - 80]);
+    const y = d3.scaleLinear().domain([0, 400]).range([height, 0]);
+    const r = d3.scaleSqrt().domain([0, 100]).range([6, 45]);
+    const color = d3.scaleOrdinal(d3.schemeSpectral[10]);
+
+    // Grid Lines
+    svg.append("g").attr("class", "grid").call(d3.axisLeft(y).tickSize(-width).tickFormat(""));
+    svg.append("g").attr("transform", `translate(0,${height})`).call(d3.axisBottom(x).tickSize(-height).tickFormat(""));
+
+    // Axes
+    svg.append("g").attr("transform", `translate(0,${height})`).call(d3.axisBottom(x).tickPadding(15));
+    svg.append("g").call(d3.axisLeft(y).tickPadding(15));
+
+    // Unicorn Threshold (100亿)
+    svg.append("line").attr("class", "unicorn-line").attr("x1", 0).attr("x2", width).attr("y1", y(100)).attr("y2", y(100));
+    svg.append("text").attr("class", "unicorn-text").attr("x", width - 120).attr("y", y(100) - 12).text("独角兽门槛 100亿");
+
+    // Force Simulation for labels and bubbles
+    const nodes = data.map(d => ({...d, x: x(d.stage), y: y(d.val)}));
+    const simulation = d3.forceSimulation(nodes)
+        .force("x", d3.forceX(d => x(d.stage)).strength(1))
+        .force("y", d3.forceY(d => y(d.val)).strength(1))
+        .force("collide", d3.forceCollide().radius(d => r(d.amt) + 28)) // Ensures labels don't overlap
+        .stop();
+
+    for (let i = 0; i < 250; ++i) simulation.tick();
+
+    // Render elements
+    const bubbles = svg.selectAll(".bubble-group").data(nodes).enter().append("g");
+
+    bubbles.append("circle")
+        .attr("class", "bubble")
+        .attr("cx", d => d.x).attr("cy", d => d.y).attr("r", d => r(d.amt))
+        .style("fill", d => color(d.city))
+        .on("mouseover", (event, d) => {
+            tooltip.transition().duration(150).style("opacity", 1);
+            tooltip.html(`
+                <div style="font-size:16px; border-bottom:1px solid #eee; padding-bottom:5px; margin-bottom:8px"><b>${d.name}</b></div>
+                <b>技术领域:</b> ${d.sector}<br/>
+                <b>总部城市:</b> ${d.city}<br/>
+                <b>当前估值:</b> ${d.val}亿 RMB<br/>
+                <b>本轮融资:</b> ${d.amt}亿 RMB
+            `)
+            .style("left", (event.pageX + 20) + "px")
+            .style("top", (event.pageY - 28) + "px");
+        })
+        .on("mousemove", (event) => tooltip.style("left", (event.pageX + 20) + "px").style("top", (event.pageY - 28) + "px"))
+        .on("mouseout", () => tooltip.transition().duration(400).style("opacity", 0));
+
+    bubbles.append("text")
+        .attr("class", "label")
+        .attr("x", d => d.x).attr("y", d => d.y - r(d.amt) - 10)
+        .attr("text-anchor", "middle")
+        .text(d => d.name);
+
+    // Axis Labels
+    svg.append("text").attr("x", width / 2).attr("y", height + 65).attr("class", "axis-label").style("text-anchor", "middle").text("融资阶段 (Funding Stage)");
+    svg.append("text").attr("transform", "rotate(-90)").attr("y", -70).attr("x", -height/2).attr("class", "axis-label").style("text-anchor", "middle").text("估值 Post-money Valuation (100M RMB)");
+
+</script>
+</body>
+</html>
